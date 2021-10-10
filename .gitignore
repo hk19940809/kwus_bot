@@ -1,0 +1,4 @@
+.vscode
+*.pickle
+secret/
+config/

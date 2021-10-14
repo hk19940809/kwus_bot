@@ -1,4 +1,4 @@
 .vscode
 *.pickle
-secret/
 .env
+google-credentials.json

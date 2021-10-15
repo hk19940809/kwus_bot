@@ -13,7 +13,7 @@ load_dotenv()
 command_prefix = os.environ["COMMAND_PREFIX"]
 bot = commands.Bot(command_prefix=command_prefix)
 
-# bot起動時のイベントハンドラ
+# event handler when bot run
 @bot.event
 async def on_ready():
     print('Logged in as')
@@ -32,7 +32,7 @@ def auth_google_api():
     if os.path.exists('token.pickle'):
         with open('token.pickle', 'rb') as token:
             creds = pickle.load(token)
-    # If there are no (valid) credentials available, let the user log in.
+    # if there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
@@ -40,8 +40,8 @@ def auth_google_api():
             secret = os.environ["GOOGLE_API_SECRET"]
             scopes = os.environ["GOOGLE_API_SCOPES"]
             flow = InstalledAppFlow.from_client_secrets_file(secret, scopes)
-            creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
+            creds = flow.run_console()
+        # save the credentials for the next run
         with open('token.pickle', 'wb') as token:
             pickle.dump(creds, token)
 
@@ -50,7 +50,7 @@ def auth_google_api():
 def request_sheet_api(creds):
 
     service = build('sheets', 'v4', credentials=creds)
-    # Call the Sheets API
+    # call the Sheets API
     sheet = service.spreadsheets()
     valueRanges = get_value_ranges(sheet, get_ranges(sheet))
 
@@ -78,14 +78,14 @@ def get_value_ranges(sheet, ranges):
     result = sheet.values().batchGet(spreadsheetId=sheet_id, ranges=ranges).execute()
     return result.get('valueRanges', [])
 
-# メッセージ入力時のイベントハンドラ
+# event handler when member sent message
 @bot.event
 async def on_message(message):
 
     c = message.content
     print(c)
 
-    # メッセージ削除処理
+    # delete message when message includes command prefix
     if c.startswith(command_prefix):
         await message.delete()
 
@@ -99,7 +99,7 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# !reloadコマンド
+# reload command
 @bot.command()
 async def reload(ctx):
     """シートの内容をリロードします。"""
@@ -109,13 +109,20 @@ async def reload(ctx):
     postload = os.environ["POSTLOAD_MESSAGE"]
     await ctx.send(postload)
 
-# !byeコマンド
+# sheet command
+@bot.command()
+async def sheet(ctx):
+    """シートのURLを表示します。"""
+    sheet_id = os.environ["SPREADSHEET_ID"]
+    url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/"
+    await ctx.send(url)
+
+# bye command
 @bot.command()
 async def bye(ctx):
     """botをログアウトさせます。"""
     exit_message = os.environ["EXIT_MESSAGE"]
     await ctx.send(exit_message)
-    # スクリプト終了
     await bot.close()
 
 # if __name__ == '__main__':

@@ -20,13 +20,39 @@ async def on_ready():
     print(bot.user.name)
     print(bot.user.id)
     print('-----')
-    load_sheet()
 
-def load_sheet():
+# event handler when member sent message
+@bot.event
+async def on_message(message):
+
+    c = message.content
+    print(c)
+
+    # delete message when message includes command prefix
+    if c.startswith(command_prefix):
+        await message.delete()
+
+    if REPLY:
+        for row in REPLY:
+            if len(row) < 2:
+                continue
+            if row[1] in c:
+                await message.channel.send(row[0])
+                return
+
+    await bot.process_commands(message)
+
+# init command
+@bot.command()
+async def init(ctx):
+    await load_sheet(ctx)
+
+async def load_sheet(ctx):
     global REPLY
-    REPLY = request_sheet_api(auth_google_api())
+    creds = await auth_google_api(ctx)
+    REPLY = request_sheet_api(creds)
 
-def auth_google_api():
+async def auth_google_api(ctx):
     creds = None
 
     if os.path.exists('token.pickle'):
@@ -39,8 +65,10 @@ def auth_google_api():
         else:
             secret = os.environ["GOOGLE_API_SECRET"]
             scopes = os.environ["GOOGLE_API_SCOPES"]
-            flow = InstalledAppFlow.from_client_secrets_file(secret, scopes)
-            creds = flow.run_console()
+            flow = InstalledAppFlow.from_client_secrets_file(secret, scopes=scopes, redirect_uri="http://localhost")
+            message = await ctx.send(flow.authorization_url()[0])
+            creds = flow.run_local_server()
+            message.delete()
         # save the credentials for the next run
         with open('token.pickle', 'wb') as token:
             pickle.dump(creds, token)
@@ -78,34 +106,13 @@ def get_value_ranges(sheet, ranges):
     result = sheet.values().batchGet(spreadsheetId=sheet_id, ranges=ranges).execute()
     return result.get('valueRanges', [])
 
-# event handler when member sent message
-@bot.event
-async def on_message(message):
-
-    c = message.content
-    print(c)
-
-    # delete message when message includes command prefix
-    if c.startswith(command_prefix):
-        await message.delete()
-
-    if not REPLY: return
-    for row in REPLY:
-        if len(row) < 2:
-            continue
-        if row[1] in c:
-            await message.channel.send(row[0])
-            return
-
-    await bot.process_commands(message)
-
 # reload command
 @bot.command()
 async def reload(ctx):
     """シートの内容をリロードします。"""
     preload = os.environ["PRELOAD_MESSAGE"]
     await ctx.send(preload)
-    load_sheet()
+    await load_sheet(ctx)
     postload = os.environ["POSTLOAD_MESSAGE"]
     await ctx.send(postload)
 

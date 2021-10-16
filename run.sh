@@ -7,4 +7,3 @@ do
 done < ./.env
 heroku config:set GOOGLE_APPLICATION_CREDENTIALS=google-credentials.json
 heroku config:set GOOGLE_CREDENTIALS="$(< ./google-credentials.json)"
-heroku run python3 bot.py
